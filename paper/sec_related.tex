@@ -1,0 +1,31 @@
+\section{Background and Related Work}
+\label{sec:related}
+
+\subsection{Angular routing in sparse attention}
+
+\paragraph{Reformer.} \citet{kitaev2020reformer} share the query and key projections ($\bq_i = \bk_i$) and assign each token a bucket by locality-sensitive hashing: draw a random matrix $\bR \in \R^{d \times b/2}$ and set $h(\bx) = \arg\max\left([\bx\bR;\, -\bx\bR]\right)$. This is cross-polytope LSH \citep{andoni2015crosspolytope}: the sign-and-argmax structure partitions the sphere into $b$ sectors whose boundaries are determined by a random orthogonal frame. Attention is computed only within buckets, and $n_r$ independent hash rounds reduce the probability that two nearby vectors are separated. Cost is $O(n \log n)$ with chunked sorting.
+
+Two properties matter for us. First, $\bR$ is \emph{random and fixed}: the partition is content-agnostic and its quality is a statistical guarantee, not a learned one. Second, the codebook is the cross-polytope $\{\pm \be_j\}$, i.e.\ orthonormal. PHASOR keeps the second property and learns the first.
+
+\paragraph{Routing Transformer.} \citet{roy2021routing} cluster $L_2$-normalised queries and keys with online spherical $k$-means and let each query attend within its cluster, giving $O(n^{1.5})$ cost. The centroids are learned (by EMA, not by gradient descent through the assignment). Because centroids are unconstrained directions, nothing prevents them from concentrating; the method relies on $k$-means dynamics and on balanced top-$k$ assignment for stability.
+
+\paragraph{Learned block sparsity.} NSA \citep{yuan2025nsa} and MoBA \citep{lu2025moba} select \emph{blocks} of keys per query using pooled block representations, and are designed for hardware efficiency and native trainability. NSA in particular combines three branches: compressed coarse-grained tokens, selected fine-grained blocks, and a sliding window. Our residue-summary fallback resembles NSA's compression branch in shape and differs in construction, as noted above. These two systems are the strongest recent baselines for any trainable sparse attention proposal, and we include them in the protocol.
+
+\subsection{Routing in mixture-of-experts layers}
+
+Sparse MoE routing \citep{shazeer2017outrageously,fedus2022switch,lepikhin2021gshard} selects parameters rather than keys, but the router design problems are the same. \citet{chi2022representation} attribute instability to representation collapse induced by routing through a low-rank linear projection, and propose routing by cosine similarity against $L_2$-normalised expert embeddings in a low-dimensional space. That method (X-MoE) is the closest published relative of our router: both normalise, both score by angle. The difference is that X-MoE's prototypes are free parameters and can in principle still concentrate, whereas our prototypes are a fixed orthonormal frame and the learned degrees of freedom live entirely in $O(\dc)$.
+
+\citet{lewis2021base} cast assignment as a balanced linear assignment problem, guaranteeing balance by construction at the cost of a global solve. \citet{roller2021hash} use fixed random hashes and show they are competitive --- a result we treat as the null hypothesis that any learned router must beat. \citet{clark2022unified} give scaling laws for routed models. \citet{jiang2024mixtral} report that expert specialisation in a strong MoE model appears largely syntactic and positional rather than semantic, which is relevant context for any proposal motivated by semantic specialisation, including this one (Section~\ref{sec:limits}).
+
+\subsection{MoE inside attention}
+
+MoA \citep{zhang2022moa}, SwitchHead \citep{csordas2024switchhead} and MoH \citep{jin2025moh} place experts inside the attention layer. SwitchHead's ablation is directly informative for the present design: \emph{the best configuration places experts on the value and output projections, and experts in the key and query projections were found to be unnecessary}. Any proposal that routes the key projection must engage with this result. PHASOR does not route the key \emph{projection}: it uses the router to determine the \emph{sparsity pattern} (which keys a query may see), which is an orthogonal axis to which weight matrix produces the key. We consider this an important distinction and one that the SwitchHead result sharpens rather than contradicts.
+
+\subsection{Conditional computation over tokens}
+
+Mixture-of-Depths \citep{raposo2024mixture} routes a capped number of tokens through each block; the rest take the residual path. This is the mechanism our fallback modifies. Related inference-time methods select which cached keys to read per query \citep{zhang2023h2o,tang2024quest}; they are complementary, as they do not change training.
+
+\subsection{Rotary embeddings}
+
+RoPE \citep{su2024roformer} multiplies each 2-D subvector of $\bq$ and $\bk$ by a rotation whose angle is $\theta_j m$ at position $m$, so that $\langle \bq_m, \bk_n\rangle$ depends on $m - n$. Applying RoPE to only a fraction of head dimensions is common \citep{black2022gptneox}, and DeepSeek-V2 \citep{deepseekv2} explicitly carries \emph{decoupled} RoPE dimensions alongside compressed latent dimensions. Proposition~\ref{prop:rope} gives a routing-specific reason for the same structural choice. The nearest analysis we are aware of is \citet{chiang2025ropedim}, who argue that RoPE causes dimension inefficiency in attention heads used for long-distance retrieval; that argument concerns the \emph{score}, ours concerns the \emph{partition}, but both point at the same underlying fact that rotary phase consumes angular capacity that content would otherwise use.
+

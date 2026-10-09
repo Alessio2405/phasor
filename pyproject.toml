@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phasor-attn"
+version = "0.1.0"
+description = "Phase-Aware Sparse Attention with Learned Orthogonal Routing (reference implementation)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "Alessio Doria"}]
+keywords = ["attention", "sparse-attention", "transformers", "rope", "mixture-of-experts"]
+dependencies = ["torch>=2.1", "numpy>=1.24"]
+
+[project.urls]
+Repository = "https://github.com/Alessio2405/phasor"
+
+[project.optional-dependencies]
+experiments = ["transformers>=4.40", "datasets>=2.18", "matplotlib>=3.7", "pandas>=2.0"]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

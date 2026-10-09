@@ -1,0 +1,9 @@
+router,step,min_prototype_angle_deg
+orthogonal (ours),0,90.0
+orthogonal (ours),50,90.0
+orthogonal (ours),150,90.0
+orthogonal (ours),400,90.0
+unconstrained linear,0,48.43
+unconstrained linear,50,0.809
+unconstrained linear,150,0.0
+unconstrained linear,400,0.0

@@ -1,0 +1,15 @@
+variant=dense  non-embedding params=393,856  tokens/step=2,040  device=cpu
+step     1  loss 4.1886  ppl    65.93  sum 0.000  dens 1.000
+step   100  loss 4.1658  ppl    64.45  sum 0.000  dens 1.000
+step   200  loss 4.1653  ppl    64.41  sum 0.000  dens 1.000
+step   300  loss 4.1582  ppl    63.95  sum 0.000  dens 1.000
+step   400  loss 3.8604  ppl    47.48  sum 0.000  dens 1.000
+step   500  loss 3.8444  ppl    46.73  sum 0.000  dens 1.000
+step   600  loss 3.7380  ppl    42.01  sum 0.000  dens 1.000
+step   700  loss 3.6824  ppl    39.74  sum 0.000  dens 1.000
+step   800  loss 3.6171  ppl    37.23  sum 0.000  dens 1.000
+step   900  loss 3.4992  ppl    33.09  sum 0.000  dens 1.000
+step  1000  loss 3.4341  ppl    31.00  sum 0.000  dens 1.000
+
+wrote results/dense_seed1.json
+Reminder: this harness cannot support a wall-clock claim. See NOTES_FOR_PAPER.md, 'Not implemented, and why it matters'.

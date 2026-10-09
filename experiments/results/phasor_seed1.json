@@ -1,0 +1,147 @@
+{
+  "config": {
+    "variant": "phasor",
+    "steps": 1000,
+    "batch": 8,
+    "context": 256,
+    "vocab": 64,
+    "layers": 2,
+    "heads": 4,
+    "d_model": 128,
+    "window": 8,
+    "rope_fraction": 0.5,
+    "lr": 0.001,
+    "seed": 1,
+    "log_every": 100,
+    "device": "cpu",
+    "out": "results/phasor_seed1.json"
+  },
+  "n_params_non_embedding": 394384,
+  "tokens_per_step": 2040,
+  "total_tokens": 2040000,
+  "wall_clock_s": 825.99,
+  "history": [
+    {
+      "step": 1,
+      "loss": 4.1837873458862305,
+      "ppl": 65.61388570521635,
+      "aux_loss": -0.06930641829967499,
+      "load_entropy": 0.9753545522689819,
+      "summary_mass": 0.035090815275907516,
+      "pattern_density": 0.0912281721830368,
+      "tokens_seen": 2040,
+      "elapsed_s": 2.34
+    },
+    {
+      "step": 100,
+      "loss": 4.169280529022217,
+      "ppl": 64.6689079633858,
+      "aux_loss": -0.06931421160697937,
+      "load_entropy": 0.7979227304458618,
+      "summary_mass": 0.017046801804099232,
+      "pattern_density": 0.07769320718944073,
+      "tokens_seen": 204000,
+      "elapsed_s": 87.78
+    },
+    {
+      "step": 200,
+      "loss": 4.158910751342773,
+      "ppl": 64.00177077541528,
+      "aux_loss": -0.0693134069442749,
+      "load_entropy": 0.826880156993866,
+      "summary_mass": 0.0117248379974626,
+      "pattern_density": 0.09112859889864922,
+      "tokens_seen": 408000,
+      "elapsed_s": 169.59
+    },
+    {
+      "step": 300,
+      "loss": 4.163684368133545,
+      "ppl": 64.30802108227718,
+      "aux_loss": -0.06931441277265549,
+      "load_entropy": 0.7670327425003052,
+      "summary_mass": 0.010505310630833264,
+      "pattern_density": 0.09886259213089943,
+      "tokens_seen": 612000,
+      "elapsed_s": 249.01
+    },
+    {
+      "step": 400,
+      "loss": 4.163237571716309,
+      "ppl": 64.2792949067121,
+      "aux_loss": -0.06931442767381668,
+      "load_entropy": 0.7870444655418396,
+      "summary_mass": 0.012564050208311528,
+      "pattern_density": 0.10172717273235321,
+      "tokens_seen": 816000,
+      "elapsed_s": 327.97
+    },
+    {
+      "step": 500,
+      "loss": 4.164173126220703,
+      "ppl": 64.33945982999553,
+      "aux_loss": -0.0693143755197525,
+      "load_entropy": 0.7575910091400146,
+      "summary_mass": 0.0071199871599674225,
+      "pattern_density": 0.1199434157460928,
+      "tokens_seen": 1020000,
+      "elapsed_s": 406.42
+    },
+    {
+      "step": 600,
+      "loss": 4.1628947257995605,
+      "ppl": 64.25726079029114,
+      "aux_loss": -0.06931450217962265,
+      "load_entropy": 0.7584292888641357,
+      "summary_mass": 0.008589305463829078,
+      "pattern_density": 0.13446451723575592,
+      "tokens_seen": 1224000,
+      "elapsed_s": 486.82
+    },
+    {
+      "step": 700,
+      "loss": 4.162704944610596,
+      "ppl": 64.2450671280392,
+      "aux_loss": -0.06931450963020325,
+      "load_entropy": 0.7603253126144409,
+      "summary_mass": 0.008951864729169756,
+      "pattern_density": 0.10946451872587204,
+      "tokens_seen": 1428000,
+      "elapsed_s": 564.38
+    },
+    {
+      "step": 800,
+      "loss": 4.158318042755127,
+      "ppl": 63.963847616053435,
+      "aux_loss": -0.06931459903717041,
+      "load_entropy": 0.7700262367725372,
+      "summary_mass": 0.011163232644321397,
+      "pattern_density": 0.10323558002710342,
+      "tokens_seen": 1632000,
+      "elapsed_s": 645.6
+    },
+    {
+      "step": 900,
+      "loss": 4.161604404449463,
+      "ppl": 64.17440174368927,
+      "aux_loss": -0.06931456923484802,
+      "load_entropy": 0.776500791311264,
+      "summary_mass": 0.02031628115219064,
+      "pattern_density": 0.09512580372393131,
+      "tokens_seen": 1836000,
+      "elapsed_s": 742.31
+    },
+    {
+      "step": 1000,
+      "loss": 4.160730838775635,
+      "ppl": 64.118365668347,
+      "aux_loss": -0.06931436061859131,
+      "load_entropy": 0.7628596425056458,
+      "summary_mass": 0.008558079425711185,
+      "pattern_density": 0.10194067656993866,
+      "tokens_seen": 2040000,
+      "elapsed_s": 825.99
+    }
+  ],
+  "MATCHED_ON": "parameters and tokens; NOT FLOPs (reference impl is O(T^2))"
+}

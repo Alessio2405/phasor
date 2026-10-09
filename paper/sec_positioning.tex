@@ -1,0 +1,27 @@
+\section{Positioning: what is new here}
+\label{sec:positioning}
+
+We summarise the claim structure explicitly, since the surrounding literature is dense and partial overlaps are easy to overstate.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{4.3cm}p{5.1cm}p{4.4cm}}
+\toprule
+\textbf{Component} & \textbf{Closest prior work} & \textbf{Status} \\
+\midrule
+Angular routing of tokens for sparse attention & Reformer \citep{kitaev2020reformer}; Routing Transformer \citep{roy2021routing} & \emph{Not new.} Established. \\
+Cosine/normalised routing to fight collapse & X-MoE \citep{chi2022representation} & \emph{Not new.} \\
+Learned \emph{orthogonal} frame with \emph{fixed} orthonormal codebook, with the non-collapse guarantee of Prop.~\ref{prop:collapse} & Between Reformer (random frame) and Routing Transformer (free centroids); orthogonal parametrisations from \citep{mhammedi2017householder,lezcano2019trivializations} & \emph{New as a router design,} to our knowledge; the ingredients are standard. \\
+Decoupling routing from RoPE, with Prop.~\ref{prop:rope} & Partial RoPE \citep{black2022gptneox}; decoupled RoPE in MLA \citep{deepseekv2} --- both for other reasons & \emph{The mechanism is standard; the routing-specific argument we have not seen stated.} \\
+Residual carry of unrouted tokens & MoD \citep{raposo2024mixture}; MoE overflow \citep{fedus2022switch} & \emph{Not new.} \\
+Making the router's residue \emph{visible to the softmax} as per-query coarse summaries & NSA compression branch \citep{yuan2025nsa}; global tokens \citep{beltagy2020longformer,zaheer2020bigbird}; sinks \citep{xiao2024streaming}; registers \citep{darcet2024registers} & \emph{Partly new:} prior coarse branches are routing-independent; ours is the router's complement, hence query-dependent. \\
+\midrule
+Torus confinement as the explanation for the capacity ceiling (Prop.~\ref{prop:torus}) & We are not aware of a prior statement; adjacent to \citet{chiang2025ropedim} on rotary dimension inefficiency, which concerns the score rather than the partition & \emph{New, to our knowledge.} \\
+Load invariance under an orthogonal router with a fixed codebook (Prop.~\ref{prop:load}) & Balance-by-construction in BASE layers \citep{lewis2021base} achieves balance by a global solve, not by geometry & \emph{New, to our knowledge,} and it cuts against our own ablation design. \\
+Chunk-fidelity condition $c \gtrsim n/B$ for bucket-sorted sparse attention & Chunking is standard since \citet{kitaev2020reformer}; we have not seen its fidelity measured or its effect on the complexity claim stated & \emph{New as a measurement;} the mechanism is obvious once stated. \\
+\bottomrule
+\end{tabular}
+\caption{Honest provenance of each component. The lower block is what the studies in Section~\ref{sec:studies} added.}
+\end{table}
+

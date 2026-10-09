@@ -1,0 +1,14 @@
+\section{Conclusion}
+
+We have described a sparse attention layer whose router is a learned orthogonal rotation acting on a fixed orthonormal codebook, which reads a RoPE-free content subspace, and whose excluded tokens remain visible to the softmax as coarse residue summaries. We gave a non-collapse property of the router's partition, an equidistribution argument for why angular routing should not read rotary dimensions, a torus-confinement result explaining what goes wrong when it does, an invariance result showing that the bucket load belongs to the data rather than to the router, and a complexity and cache analysis that avoids the two overclaims most common in this area --- that expert routing of projections reduces the quadratic term, and that sparse attention reduces KV cache capacity. Neither is true.
+
+The more useful output of this work is probably the four corrections in Section~\ref{sec:studies}, three of which were corrections to our own claims. Routing on rotary dimensions does not degrade toward uniform hashing but toward a capacity ceiling, which is worse and gets relatively worse as the codebook grows. A balancing loss on the router cannot work, which killed an ablation we had already designed. The chunking that the complexity figure depends on is faithful only under a condition the figure omits, which couples routing width to context length. And at initialisation every ablation arm produces an identical pattern, which means the remaining claims cannot be tested cheaply.
+
+We have trained no language model, and we think a proposal is more useful stated that way than dressed in results it does not have. What the released code does provide is the reference implementation, a test suite that checks causality by autograd rather than by inspection, and the studies above. The cheapest decisive experiment is still E0, which requires no training; the revised version in Section~\ref{sec:e0} measures two quantities the original would have missed. We would run it before anything else.
+
+\paragraph{Reproducibility.} The implementation, tests and studies are released at \url{https://github.com/Alessio2405/phasor}. Running \texttt{pytest tests/} executes 128 tests covering orthogonality under optimisation, causality of every ablation arm by autograd, agreement between the training-time and decoding-time summary paths, and the numerical counterparts of each proposition. The following regenerates every table and figure in Section~\ref{sec:studies} from scratch:
+\begin{center}\small\ttfamily
+python experiments/numerical\_studies.py \&\& python experiments/make\_tables.py
+\end{center}
+
+\paragraph{Acknowledgements.} The RoPE-decoupling and residual-fallback ideas in this paper originated in an informal design discussion; the author thanks the interlocutors for pressure-testing them.

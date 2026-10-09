@@ -1,0 +1,221 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Notation and head decomposition}
+
+Let $X \in \R^{n \times d}$ be the layer input for a sequence of length $n$. For a single head with dimension $d_h$ we compute $\bq_i, \bk_i \in \R^{d_h}$ and $\bv_i \in \R^{d_v}$ as usual. We split the head dimension into a positional part and a content part,
+\begin{equation}
+  \bq_i = [\,\bq_i^{\mathrm{p}} \;;\; \bq_i^{\mathrm{c}}\,], \qquad
+  \bk_i = [\,\bk_i^{\mathrm{p}} \;;\; \bk_i^{\mathrm{c}}\,], \qquad
+  \bq_i^{\mathrm{p}}, \bk_i^{\mathrm{p}} \in \R^{\dpos}, \;\; \bq_i^{\mathrm{c}}, \bk_i^{\mathrm{c}} \in \R^{\dc},
+\end{equation}
+with $\dpos + \dc = d_h$. RoPE is applied to the positional part only:
+\begin{equation}
+  \tilde\bq_i = [\, \Theta_i\,\bq_i^{\mathrm{p}} \;;\; \bq_i^{\mathrm{c}} \,], \qquad
+  \tilde\bk_i = [\, \Theta_i\,\bk_i^{\mathrm{p}} \;;\; \bk_i^{\mathrm{c}} \,],
+\end{equation}
+where $\Theta_i$ is the block-diagonal RoPE matrix at position $i$. Attention scores use the full $\tilde\bq, \tilde\bk$, so positional information is not removed from the model; it is removed only from the \emph{router's view}. Setting $\dpos = d_h$ recovers standard full RoPE and, by Proposition~\ref{prop:rope}, destroys content routing; setting $\dpos = 0$ recovers a NoPE model. We treat $\rho = \dpos/d_h$ as a hyperparameter and ablate it.
+
+\subsection{The orthogonal rotational router}
+
+\begin{definition}[PHASOR router]
+\label{def:router}
+Let $\bR \in O(\dc)$ be a learned orthogonal matrix and let $C = \{\pm\be_1,\dots,\pm\be_{\dc}\}$ be the fixed cross-polytope codebook, so $B = 2\dc$. For a routing input $\bu \in \R^{\dc}$ define
+\begin{equation}
+  \hat\bu = \frac{\bu}{\|\bu\|_2 + \varepsilon}, \qquad
+  \bs(\bu) = \big[\, \bR\hat\bu \;;\; -\bR\hat\bu \,\big] \in \R^{B}, \qquad
+  b(\bu) = \arg\max_{j \in [B]} s_j(\bu).
+\end{equation}
+\end{definition}
+
+Queries and keys are routed by the same map applied to their content parts: $b^q_i = b(\bq^{\mathrm{c}}_i)$ and $b^k_i = b(\bk^{\mathrm{c}}_i)$. Unlike Reformer we do not tie $\bq = \bk$; we tie the \emph{router}, which is sufficient for queries and keys of the same type to land in the same sector while leaving the attention bilinear form unconstrained.
+
+\paragraph{Parametrisation of $\bR$.} We use the Cayley transform, $\bR = (\bI - A)(\bI + A)^{-1}$ with $A = -A^\top$ skew-symmetric, which covers the connected component of $O(\dc)$ containing the identity and is differentiable everywhere it is defined. Two alternatives with the same guarantee are a product of $p$ Householder reflections \citep{mhammedi2017householder}, giving $O(p\dc)$ cost and a tunable expressivity/cost trade-off, and the matrix exponential with trivialisation \citep{lezcano2019trivializations,arjovsky2016unitary}. Since $\dc$ is a head content dimension (typically $32$--$64$), the $O(\dc^3)$ cost of the Cayley inverse is paid once per layer per step, not per token, and is negligible; we still report Householder as the default for large $\dc$.
+
+\paragraph{Why not a free codebook.} With learned prototypes $\{\bc_b\}$ the rotation is absorbed: $\langle \bR\hat\bu, \bc_b\rangle = \langle \hat\bu, \bR^\top\bc_b\rangle$. Definition~\ref{def:router} is therefore \emph{not} a reparametrisation of a cosine router; it is a strictly constrained subfamily, and the constraint has a consequence:
+
+\begin{proposition}[Codebook non-collapse]
+\label{prop:collapse}
+Let $\bp_b = \bR^\top \bc_b$ be the effective prototype of bucket $b$ under Definition~\ref{def:router}. Then for every $\bR \in O(\dc)$ and every $b \neq b'$ with $\bp_{b'} \neq -\bp_b$,
+\begin{equation}
+  \angle(\bp_b, \bp_{b'}) = \frac{\pi}{2},
+\end{equation}
+and $\|\bp_b\| = 1$ for all $b$. In particular $\min_{b\neq b'} \angle(\bp_b,\bp_{b'})$ is invariant to the parameters. By contrast, for an unconstrained linear router with prototypes $\bp_b = \bW^\top \be_b$ the same quantity can be driven to $0$ by gradient descent.
+\end{proposition}
+
+\begin{proof}
+$\bR$ orthogonal preserves inner products, so $\langle \bp_b, \bp_{b'}\rangle = \langle \bR^\top\bc_b, \bR^\top\bc_{b'}\rangle = \langle \bc_b, \bc_{b'}\rangle$. For the cross-polytope codebook, $\langle \bc_b,\bc_{b'}\rangle \in \{1, 0, -1\}$, taking value $0$ for all non-identical, non-antipodal pairs, and $\|\bc_b\| = 1$. The claim for the unconstrained case follows because $\bW$ ranges over all of $\R^{\dc\times B}$, which includes rank-one matrices.
+\end{proof}
+
+Proposition~\ref{prop:collapse} is a statement about the router's \emph{prototypes}, and we want to be exact about its scope. It says that the partition of the sphere induced by the router remains a rigid, equiangular cross-polytope partition throughout training, so the failure mode identified by \citet{chi2022representation} --- prototypes drifting together until the router cannot discriminate --- cannot occur in this family. It says nothing about the \emph{distribution of data} over that partition. If the encoder learns to map most tokens into one sector, load collapses even though the partition does not. Section~\ref{sec:balance} treats that separately, and Section~\ref{sec:limits} lists it as the main open risk.
+
+\begin{remark}[Relation to Reformer and Routing Transformer]
+Fixing $\bR$ to a random draw and freezing it recovers Reformer's hash function exactly. Replacing the fixed codebook by EMA-updated free centroids and dropping orthogonality recovers Routing Transformer's assignment rule up to the optimiser. PHASOR is the diagonal of that square: learned frame, fixed codebook.
+\end{remark}
+
+\subsection{Phase contamination: why the router must not read RoPE dimensions}
+\label{sec:rope}
+
+Consider a router that reads a subspace to which RoPE has been applied. Restrict attention to one RoPE plane with frequency $\theta$ and let $u \in \R^2$ be the content vector in that plane, $\alpha = \arg(u)$. At position $m$ the routed vector is $\Theta^{(\theta)}_m u$ with argument $\alpha + \theta m$. Any angular router partitions this plane into $B_2$ arcs.
+
+\begin{proposition}[Phase contamination]
+\label{prop:rope}
+Let two tokens have identical content in the plane ($\alpha_1 = \alpha_2 = \alpha$) and occupy positions $m$ and $n$, and let the router assign buckets by the arc of width $2\pi/B_2$ containing the argument. Write $\Delta = m - n$. Then the two tokens are co-routed if and only if
+\begin{equation}
+  \left\lfloor \frac{B_2(\alpha + \theta m)}{2\pi} \right\rfloor
+  \equiv
+  \left\lfloor \frac{B_2(\alpha + \theta n)}{2\pi} \right\rfloor \pmod{B_2}.
+\end{equation}
+If $\theta/2\pi$ is irrational, then by Weyl equidistribution the sequence $(\theta\Delta \bmod 2\pi)_{\Delta \in \mathbb{N}}$ is equidistributed on $[0,2\pi)$, and for $\Delta$ drawn uniformly from $\{1,\dots,W\}$,
+\begin{equation}
+  \lim_{W\to\infty} \Prob\big[\text{co-routed}\big] = \frac{1}{B_2},
+\end{equation}
+i.e.\ chance level: the content agreement $\alpha_1 = \alpha_2$ confers no advantage. More generally the co-routing probability for a window of width $W$ is $\tfrac{1}{B_2} + O\!\left(\tfrac{1}{\theta W}\right)$, so contamination is severe for high-frequency planes ($\theta W \gg 2\pi$) and mild for low-frequency ones ($\theta W \ll 2\pi$).
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+The arc index is a function of $\alpha + \theta m \bmod 2\pi$ alone. Two indices coincide iff the phases fall in the same arc; since both phases share the offset $\alpha$, the event depends only on $\theta\Delta \bmod 2\pi$ and on the position of $\alpha$ within its arc. Averaging over the equidistributed $\theta\Delta$ gives arc-length $2\pi/B_2$ over circumference $2\pi$. The finite-window remainder follows from the discrepancy of $\{\theta\Delta\}$ over $W$ terms.
+\end{proof}
+
+The practical reading is that \emph{a clustering-based sparse attention layer stacked naively on RoPE does not cluster by content}. Its high-frequency planes hash by position; its low-frequency planes retain content structure but contribute little angular resolution. Since RoPE frequencies are geometrically spaced over several orders of magnitude, a router reading all dimensions gets a mixture in which the position-hashing component dominates for typical context lengths. This also suggests a diagnostic that does not require training a new model, which we include as experiment~E0 in Section~\ref{sec:protocol}: if it fails to show contamination, the motivation for our design weakens considerably.
+
+\begin{remark}[The aggregate limit is not $1/B$]
+\label{rem:eff-buckets}
+Proposition~\ref{prop:rope} concerns a single plane, and the extrapolation to a whole head does not follow from it. Measurement (Section~\ref{sec:s1}) shows that co-routing agreement under RoPE-read routing plateaus one to two orders of magnitude above $1/B$, because the router reaches only five to ten \emph{effective} buckets however many are provisioned. Proposition~\ref{prop:torus} gives the reason: varying position alone confines the routing input to a torus of dimension $\dc/2$, a measure-zero subset of the sphere, so most of the partition is unreachable. The correct statement of the aggregate effect is therefore not that routing degenerates to uniform hashing but that it degenerates to hashing over a small effective codebook --- a worse failure, since the model loses content selectivity \emph{and} bucket capacity, and the relative loss grows with $B$.
+\end{remark}
+
+PHASOR routes on $\bq^{\mathrm{c}}, \bk^{\mathrm{c}}$, which by construction are not rotated by $\Theta_i$. Bucket identity is then a function of content alone, exactly, and positional information reaches the score through $\bq^{\mathrm{p}},\bk^{\mathrm{p}}$ as usual. We regard this decoupling as the most defensible of our three contributions, in the sense that it is the one that follows from an argument rather than from a hope.
+
+\subsection{Sparse pattern and the attention-visible residue}
+\label{sec:fallback}
+
+Let $\mathcal{K}_b = \{ j \le i : b^k_j = b \}$ be the set of causally admissible keys in bucket $b$. The naive pattern lets query $i$ attend to $\mathcal{K}_{b^q_i}$. We augment it as follows.
+
+\paragraph{Residue summaries.} For every bucket $b$ define a pooled summary of its keys and values,
+\begin{equation}
+  \bar\bk_b = \frac{1}{|\mathcal{K}_b|}\sum_{j \in \mathcal{K}_b} \bk_j, \qquad
+  \bar\bv_b = \frac{1}{|\mathcal{K}_b|}\sum_{j \in \mathcal{K}_b} \bv_j,
+\end{equation}
+computed causally by running means (so they are available at decoding time at $O(B)$ state). The key set of query $i$ is then
+\begin{equation}
+  \mathcal{S}_i \;=\; \underbrace{\mathcal{K}_{b^q_i}}_{\text{fine, in-bucket}} \;\cup\; \underbrace{\{\, \bar\bk_b : b \neq b^q_i \,\}}_{\text{coarse, residue}} \;\cup\; \underbrace{\mathcal{W}_i}_{\text{local window}},
+\end{equation}
+where $\mathcal{W}_i$ is a short sliding window of $w$ recent tokens, included because local dependencies are dense and should not depend on routing luck (the same reasoning as NSA's window branch). The output is a single softmax over $\mathcal{S}_i$ --- not a mixture of separate attentions --- so the model allocates mass between fine and coarse evidence within one normalisation.
+
+\paragraph{Why this and not a skip.} In MoD-style routing an unselected token contributes nothing to the block and is carried by the residual stream. Information is preserved across depth, but within the layer the model cannot distinguish ``considered and found irrelevant'' from ``not considered''. Making the residue visible at coarse resolution restores that distinction: the softmax can put mass on $\bar\bv_b$ when the excluded material matters, and the gradient of that mass flows back into the router through $\bar\bk_b$, giving the router a corrective signal it does not otherwise receive. This is the mechanism by which the ``it would be filtered by attention anyway'' intuition becomes true rather than assumed; under a pure skip it is false.
+
+\paragraph{Cost.} $B$ extra keys per query, hence $O(nB)$ additional score computations and $O(B d_h)$ additional cache state, both linear in $n$ with a small constant ($B = 2\dc \approx 64$--$128$).
+
+\paragraph{Residual path.} We retain the residual connection unchanged, so PHASOR is a strict superset of the MoD fallback rather than a replacement for it.
+
+\subsection{Differentiability and training}
+\label{sec:balance}
+
+The assignment $b(\cdot)$ is an $\arg\max$ and is not differentiable. We use three standard devices and report their ablation rather than claiming one is right.
+
+\begin{enumerate}
+\item \textbf{Score gating.} As in Switch \citep{fedus2022switch} and MoD \citep{raposo2024mixture}, each attended key carries its router score as a multiplicative gate, $\tilde s_i = \sigma(s_{b^q_i}(\bq^{\mathrm{c}}_i))$, applied to the attention output. Gradients then reach $\bR$ through the magnitude of the winning score even though the index is discrete.
+\item \textbf{Straight-through relaxation.} A temperature-$\tau$ softmax over $\bs$ in the backward pass with hard assignment in the forward pass \citep{bengio2013ste,jang2017gumbel,maddison2017concrete}, annealed over training.
+\item \textbf{Residue gradient.} As noted in Section~\ref{sec:fallback}, attention mass on $\bar\bk_b$ provides gradient to keys the router excluded, which a pure skip does not.
+\end{enumerate}
+
+\paragraph{Balancing.} Proposition~\ref{prop:collapse} does not bound the load. We therefore keep an auxiliary loss. Because the partition is rigid, the natural form is an entropy term on the marginal bucket distribution $\pi_b = \tfrac{1}{n}\sum_i \mathbb{1}[b^k_i = b]$,
+\begin{equation}
+  \mathcal{L}_{\text{bal}} = -\lambda \, H(\pi) = \lambda \sum_{b=1}^{B} \pi_b \log \pi_b ,
+\end{equation}
+optionally combined with the standard Switch load-balancing product form. Our hypothesis --- and it is a hypothesis, to be tested in ablation A6 --- is that the required $\lambda$ is \emph{smaller} than for an unconstrained router, because one of the two collapse channels has been closed by construction. We do not claim the loss can be removed. Gemini-style claims that orthogonality removes the need for balancing do not follow from Proposition~\ref{prop:collapse} and we do not make them.
+
+\paragraph{Multi-round routing.} Following Reformer's multi-round hashing, we may use $n_r > 1$ rotations $\bR^{(1)},\dots,\bR^{(n_r)}$ and take the union of the induced key sets, reducing the chance that a relevant key is separated by an unlucky boundary. Cost scales linearly in $n_r$.
+
+\subsection{Design decisions the method statement does not determine}
+\label{sec:design-decisions}
+
+Writing the reference implementation forced five choices that the description above leaves open. We list them because a reader cannot reconstruct them from the method, because each is a plausible place for the design to be wrong, and because at least two of them plausibly matter as much as the contributions.
+
+\paragraph{D1. Which space the residue summaries live in.} Section~\ref{sec:fallback} writes $\bar\bk_b$ as a mean of keys without saying whether the keys are pre- or post-RoPE. It matters: averaging post-RoPE keys averages vectors at different phases, so the mean suffers destructive interference and shrinks as the bucket grows --- the summary degrades exactly when it carries the most tokens. We pool the \emph{content} part of keys and score them against $\bq^{\mathrm{c}}$; values are pooled whole, since they carry no positional phase. The consequence is that the residue branch has no positional information at all. That is defensible for a coarse global branch, in the spirit of registers \citep{darcet2024registers} and sinks \citep{xiao2024streaming}, but it is a decision and not a detail.
+
+\paragraph{D2. Calibrating two branches inside one softmax.} Fine logits are $\bq^\top\bk$ over $d_h$ dimensions scaled by $1/\sqrt{d_h}$; residue logits are $\bq^{\mathrm{c}\top}\bar\bk^{\mathrm{c}}$ over $\dc$ dimensions. Placing both in one softmax at the same scale is not obviously right, so the residue branch carries a learnable per-head scale and bias. The bias initialisation turns out to control the branch's share of attention mass over nearly two orders of magnitude (Section~\ref{sec:s6}), which makes it a hyperparameter the method must declare rather than a detail it can omit.
+
+\paragraph{D3. Which round's buckets define the summaries.} With $n_r > 1$ a key belongs to a different bucket in each round. Maintaining summaries per round multiplies the state by $n_r$; we use round $0$ only. This is arbitrary and we have not measured the alternative.
+
+\paragraph{D4. The window and the summaries overlap.} A key inside the sliding window that belongs to a non-selected bucket is attended finely \emph{and} contributes to that bucket's summary. The effect is small, but it means the residue branch is not exactly ``the complement of what the router selected'' --- which is the phrase we use to distinguish it from NSA's compression branch. Either the phrase or the construction should be tightened.
+
+\paragraph{D5. The balancing loss reads future tokens.} $\mathcal{L}_{\text{bal}}$ is computed over all positions in the batch, including positions after the current one. This does not break autoregression: it is a batch-level regulariser on parameters, exactly as in standard MoE auxiliary losses, and the model \emph{function} remains causal. We state it because it is the kind of thing a reader should not have to verify for themselves, and because the released implementation tests the causality of the model function by autograd rather than by inspection.
+
+\subsection{The layer}
+
+\begin{algorithm}[t]
+\caption{PHASOR attention (single head, causal)}
+\label{alg:phasor}
+\begin{algorithmic}[1]
+\Require $X \in \R^{n\times d}$; projections $\bW_Q,\bW_K,\bW_V$; rotation parameters $A$; split $(\dpos,\dc)$; window $w$; rounds $n_r$
+\State $Q, K, V \gets X\bW_Q,\; X\bW_K,\; X\bW_V$
+\State split $Q \to (Q^{\mathrm p}, Q^{\mathrm c})$, $K \to (K^{\mathrm p}, K^{\mathrm c})$ \Comment{$\dpos + \dc = d_h$}
+\State $\tilde Q \gets [\,\mathrm{RoPE}(Q^{\mathrm p})\,;\,Q^{\mathrm c}\,]$; \quad $\tilde K \gets [\,\mathrm{RoPE}(K^{\mathrm p})\,;\,K^{\mathrm c}\,]$
+\State $\bR \gets \mathrm{Cayley}(A)$ \Comment{or $\prod_{t\le p}(\bI - 2\bh_t\bh_t^\top)$}
+\For{$r = 1$ to $n_r$}
+  \State $b^q \gets \arg\max\big[\bR^{(r)}\widehat{Q^{\mathrm c}};\,-\bR^{(r)}\widehat{Q^{\mathrm c}}\big]$; \quad $b^k \gets \arg\max\big[\bR^{(r)}\widehat{K^{\mathrm c}};\,-\bR^{(r)}\widehat{K^{\mathrm c}}\big]$
+  \State sort tokens by $(b^k, \text{position})$ and form equal-size chunks \Comment{as in Reformer}
+\EndFor
+\State $\bar K, \bar V \gets$ causal running means of $K,V$ within each bucket \Comment{$B$ entries}
+\For{each query $i$}
+  \State $\mathcal S_i \gets \mathcal K_{b^q_i} \cup \{\bar\bk_b\}_{b \neq b^q_i} \cup \mathcal W_i$ \Comment{union over rounds}
+  \State $O_i \gets \mathrm{softmax}\!\big(\tilde\bq_i^\top \tilde\bk_j / \sqrt{d_h}\big)_{j \in \mathcal S_i} \cdot V_{\mathcal S_i}$
+  \State $O_i \gets \sigma\!\big(s_{b^q_i}\big)\cdot O_i$ \Comment{score gate}
+\EndFor
+\State \Return $O\bW_O$; \quad add $\mathcal L_{\text{bal}}$ to the training objective
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm~\ref{alg:phasor} gives the full layer. Figure~\ref{fig:geometry} illustrates the routing geometry and the RoPE decoupling.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=1.0]
+
+\begin{scope}[xshift=-4.6cm]
+  \draw[softgray] (0,0) circle (1.5);
+  \foreach \a in {0,90,180,270} {
+    \draw[softgray, dashed] (0,0) -- (\a+45:1.5);
+  }
+  \foreach \a in {0,90,180,270} {
+    \draw[-{Stealth[length=2mm]}, linkblue, thick] (0,0) -- (\a:1.15);
+  }
+  \node[linkblue, font=\tiny, right=1pt] at (0:1.15) {$\be_1$};
+  \node[linkblue, font=\tiny, above=1pt] at (90:1.15) {$\be_2$};
+  \node[linkblue, font=\tiny, left=1pt] at (180:1.15) {$-\be_1$};
+  \node[linkblue, font=\tiny, below=1pt] at (270:1.15) {$-\be_2$};
+  \draw[softgray, thin] (-45:1.5) arc (-45:45:1.5);
+  \foreach \a in {12,25,38} { \fill[linkblue] (\a:1.5) circle (1.7pt); }
+  \foreach \a in {112,132,158} { \fill[red!70!black] (\a:1.5) circle (1.7pt); }
+  \node[below=0.15cm] at (0,-1.6) {\small (a) fixed codebook, learned $\bR$};
+  \node[below=0.55cm] at (0,-1.6) {\scriptsize sectors always $\pi/2$ apart};
+\end{scope}
+
+\begin{scope}[xshift=0cm]
+  \draw[softgray] (0,0) circle (1.5);
+  \draw[-{Stealth[length=2mm]}, red!70!black, thick] (0,0) -- (20:1.2);
+  \draw[-{Stealth[length=2mm]}, red!70!black, thick] (0,0) -- (32:1.2);
+  \draw[-{Stealth[length=2mm]}, red!70!black, thick] (0,0) -- (26:1.2);
+  \draw[-{Stealth[length=2mm]}, red!70!black, thick] (0,0) -- (40:1.2);
+  \node[below=0.15cm] at (0,-1.6) {\small (b) free prototypes};
+  \node[below=0.55cm] at (0,-1.6) {\scriptsize can collapse together};
+\end{scope}
+
+\begin{scope}[xshift=4.6cm]
+  \draw[softgray] (0,0) circle (1.5);
+  \foreach \a in {0,90,180,270} { \draw[softgray, dashed] (0,0) -- (\a+45:1.5); }
+  \fill[linkblue] (25:1.5) circle (1.6pt);
+  \node[linkblue, font=\scriptsize, right] at (25:1.6) {$m$};
+  \draw[-{Stealth[length=1.6mm]}, linkblue, thick, dashed] (32:1.5) arc (32:200:1.5);
+  \fill[linkblue] (205:1.5) circle (1.6pt);
+  \node[linkblue, font=\scriptsize, left] at (205:1.65) {$n$};
+  \node[below=0.15cm] at (0,-1.75) {\small (c) same content, RoPE'd};
+  \node[below=0.55cm] at (0,-1.75) {\scriptsize phase $\theta\Delta$ moves the bucket};
+\end{scope}
+
+\end{tikzpicture}
+\caption{Routing geometry. (a) A learned orthogonal $\bR$ acting on a fixed cross-polytope codebook: the partition is rigid, sector prototypes stay $\pi/2$ apart for every parameter value (Proposition~\ref{prop:collapse}). (b) An unconstrained router's prototypes may concentrate --- representation collapse \citep{chi2022representation}. (c) If routing reads RoPE-rotated dimensions, two tokens with \emph{identical content} at positions $m$ and $n$ are separated by phase $\theta(m-n)$ and land in different sectors, so content routing degrades toward position hashing (Proposition~\ref{prop:rope}).}
+\label{fig:geometry}
+\end{figure}
+

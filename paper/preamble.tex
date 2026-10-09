@@ -1,0 +1,71 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.05in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{tcolorbox}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,decorations.pathreplacing}
+\usepackage[colorlinks=true,linkcolor=linkblue,citecolor=linkblue,urlcolor=linkblue]{hyperref}
+
+\definecolor{linkblue}{RGB}{0,80,160}
+\definecolor{softgray}{RGB}{120,120,120}
+\definecolor{boxbg}{RGB}{246,247,249}
+\definecolor{boxrule}{RGB}{200,205,212}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{observation}{Observation}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\bR}{\mathbf{R}}
+\newcommand{\bq}{\mathbf{q}}
+\newcommand{\bk}{\mathbf{k}}
+\newcommand{\bv}{\mathbf{v}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bh}{\mathbf{h}}
+\newcommand{\be}{\mathbf{e}}
+\newcommand{\bA}{\mathbf{A}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\bp}{\mathbf{p}}
+\newcommand{\bS}{\mathbf{S}}
+\newcommand{\bW}{\mathbf{W}}
+\newcommand{\bI}{\mathbf{I}}
+\newcommand{\dc}{d_{\mathrm{c}}}
+\newcommand{\dpos}{d_{\mathrm{p}}}
+\newcommand{\TODO}[1]{\textcolor{softgray}{\texttt{[#1]}}}
+
+% A box for the claims the studies overturned.
+\newtcolorbox{revision}[1]{
+  colback=boxbg, colframe=boxrule, boxrule=0.4pt, arc=1pt,
+  left=6pt, right=6pt, top=5pt, bottom=5pt,
+  title={#1}, coltitle=black, fonttitle=\bfseries\small,
+  colbacktitle=boxbg, titlerule=0pt, attach title to upper={\par\smallskip}
+}
+
+\title{\bf PHASOR: Phase-Aware Sparse Attention\\with Learned Orthogonal Routing}
+
+\author{
+  Alessio Doria\\
+  \small Independent researcher\\
+  \small \texttt{numero2405@gmail.com}
+}
+
+\date{\today}

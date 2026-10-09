@@ -1,0 +1,28 @@
+\section{Orthogonal parametrisations}
+\label{app:orth}
+
+\paragraph{Cayley.} For skew-symmetric $A \in \R^{\dc\times\dc}$ ($A = -A^\top$, $\dc(\dc-1)/2$ free parameters), $\bR = (\bI - A)(\bI+A)^{-1}$ is orthogonal with $\det \bR = 1$, and the map is a diffeomorphism onto $SO(\dc)$ minus the eigenvalue $-1$ locus. Cost $O(\dc^3)$ per update, amortised over the batch.
+
+\paragraph{Householder products.} $\bR = \prod_{t=1}^{p} (\bI - 2\bh_t\bh_t^\top/\|\bh_t\|^2)$ is orthogonal for any $\{\bh_t\}$, with $\det \bR = (-1)^p$. Taking $p = \dc$ spans $O(\dc)$; taking $p < \dc$ gives a controllable low-cost subfamily at $O(p\dc)$ per application \citep{mhammedi2017householder}. This is our default for $\dc \ge 64$.
+
+\paragraph{Exponential map.} $\bR = \exp(A)$ with trivialisation \citep{lezcano2019trivializations,arjovsky2016unitary}; equivalent guarantees, higher constant.
+
+In all three cases, orthogonality holds \emph{exactly} at every point of training, not approximately via a penalty --- which is what Proposition~\ref{prop:collapse} requires.
+
+\section{Causal running summaries}
+\label{app:summaries}
+
+For decoding we maintain per-bucket counts $c_b$ and sums $\bS^k_b, \bS^v_b$. On emitting token $j$ with bucket $b$: $c_b \mathrel{+}= 1$, $\bS^k_b \mathrel{+}= \bk_j$, $\bS^v_b \mathrel{+}= \bv_j$, and $\bar\bk_b = \bS^k_b/c_b$. State is $O(B(d_h + d_v))$, independent of $n$. During training the same quantities are computed with a causal segmented cumulative sum over the bucket-sorted order, so the summaries are exact and require no extra pass.
+
+Note that $\bar\bk_b$ is a mean of keys, so $\bq^\top\bar\bk_b$ equals the \emph{mean score} of bucket $b$, not the max. This makes the residue branch a conservative (low-variance, potentially over-smoothed) estimate of what the bucket contains; a max-pooled or learned-pooled variant is an obvious alternative and is included in A4's extended form.
+
+\section{Reproducibility checklist}
+
+\begin{itemize}
+\item Reference implementation: \url{https://github.com/Alessio2405/phasor}; built on a nanoGPT-scale training harness.
+\item All runs report seed, exact token count, hardware, and wall-clock alongside FLOPs.
+\item Every table states whether entries are FLOP-matched, parameter-matched, or neither.
+\item Negative results (P1--P5 failures) are reported in the same table as positive ones.
+\end{itemize}
+
+\end{document}

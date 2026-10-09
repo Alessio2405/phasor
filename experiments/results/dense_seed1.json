@@ -1,0 +1,147 @@
+{
+  "config": {
+    "variant": "dense",
+    "steps": 1000,
+    "batch": 8,
+    "context": 256,
+    "vocab": 64,
+    "layers": 2,
+    "heads": 4,
+    "d_model": 128,
+    "window": 8,
+    "rope_fraction": 0.5,
+    "lr": 0.001,
+    "seed": 1,
+    "log_every": 100,
+    "device": "cpu",
+    "out": "results/dense_seed1.json"
+  },
+  "n_params_non_embedding": 393856,
+  "tokens_per_step": 2040,
+  "total_tokens": 2040000,
+  "wall_clock_s": 184.37,
+  "history": [
+    {
+      "step": 1,
+      "loss": 4.188618183135986,
+      "ppl": 65.9316225579761,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 2040,
+      "elapsed_s": 0.21
+    },
+    {
+      "step": 100,
+      "loss": 4.1658406257629395,
+      "ppl": 64.44683534924408,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 204000,
+      "elapsed_s": 13.72
+    },
+    {
+      "step": 200,
+      "loss": 4.165260314941406,
+      "ppl": 64.40944700275763,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 408000,
+      "elapsed_s": 28.61
+    },
+    {
+      "step": 300,
+      "loss": 4.158150672912598,
+      "ppl": 63.95314289279928,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 612000,
+      "elapsed_s": 42.64
+    },
+    {
+      "step": 400,
+      "loss": 3.860358953475952,
+      "ppl": 47.48239227997883,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 816000,
+      "elapsed_s": 60.72
+    },
+    {
+      "step": 500,
+      "loss": 3.8443925380706787,
+      "ppl": 46.73028885576817,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 1020000,
+      "elapsed_s": 80.39
+    },
+    {
+      "step": 600,
+      "loss": 3.737982749938965,
+      "ppl": 42.0131535888301,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 1224000,
+      "elapsed_s": 97.51
+    },
+    {
+      "step": 700,
+      "loss": 3.682434320449829,
+      "ppl": 39.74302366640537,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 1428000,
+      "elapsed_s": 118.45
+    },
+    {
+      "step": 800,
+      "loss": 3.617130994796753,
+      "ppl": 37.230599665167865,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 1632000,
+      "elapsed_s": 144.59
+    },
+    {
+      "step": 900,
+      "loss": 3.499159574508667,
+      "ppl": 33.087632580403984,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 1836000,
+      "elapsed_s": 163.74
+    },
+    {
+      "step": 1000,
+      "loss": 3.4341375827789307,
+      "ppl": 31.004662077636173,
+      "aux_loss": 0.0,
+      "load_entropy": null,
+      "summary_mass": 0.0,
+      "pattern_density": 1.0,
+      "tokens_seen": 2040000,
+      "elapsed_s": 184.37
+    }
+  ],
+  "MATCHED_ON": "parameters and tokens; NOT FLOPs (reference impl is O(T^2))"
+}

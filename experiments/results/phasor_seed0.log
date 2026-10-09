@@ -1,0 +1,15 @@
+variant=phasor  non-embedding params=394,384  tokens/step=2,040  device=cpu
+step     1  loss 4.1951  ppl    66.36  H 0.977  sum 0.035  dens 0.093
+step   100  loss 4.1693  ppl    64.67  H 0.795  sum 0.019  dens 0.240
+step   200  loss 4.1667  ppl    64.50  H 0.797  sum 0.020  dens 0.099
+step   300  loss 4.1606  ppl    64.11  H 0.787  sum 0.020  dens 0.292
+step   400  loss 4.1643  ppl    64.35  H 0.770  sum 0.021  dens 0.260
+step   500  loss 4.1599  ppl    64.07  H 0.761  sum 0.021  dens 0.090
+step   600  loss 4.1604  ppl    64.10  H 0.747  sum 0.022  dens 0.080
+step   700  loss 4.1602  ppl    64.08  H 0.720  sum 0.023  dens 0.078
+step   800  loss 4.1600  ppl    64.07  H 0.745  sum 0.023  dens 0.087
+step   900  loss 4.1602  ppl    64.08  H 0.780  sum 0.026  dens 0.079
+step  1000  loss 4.1604  ppl    64.10  H 0.738  sum 0.025  dens 0.086
+
+wrote results/phasor_seed0.json
+Reminder: this harness cannot support a wall-clock claim. See NOTES_FOR_PAPER.md, 'Not implemented, and why it matters'.

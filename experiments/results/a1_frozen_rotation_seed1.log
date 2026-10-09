@@ -1,0 +1,9 @@
+variant=a1_frozen_rotation  non-embedding params=393,872  tokens/step=2,040  device=cpu
+step     1  loss 4.1868  ppl    65.81  H 0.971  sum 0.035  dens 0.091
+step   100  loss 4.1683  ppl    64.61  H 0.859  sum 0.020  dens 0.212
+step   200  loss 4.1643  ppl    64.35  H 0.811  sum 0.021  dens 0.184
+step   300  loss 4.1613  ppl    64.16  H 0.763  sum 0.021  dens 0.255
+step   400  loss 4.1626  ppl    64.24  H 0.724  sum 0.022  dens 0.205
+step   500  loss 4.1610  ppl    64.13  H 0.696  sum 0.020  dens 0.313
+step   600  loss 4.1625  ppl    64.23  H 0.723  sum 0.022  dens 0.261
+step   700  loss 4.1624  ppl    64.23  H 0.716  sum 0.026  dens 0.313

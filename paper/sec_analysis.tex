@@ -1,0 +1,47 @@
+\section{Analysis}
+\label{sec:analysis}
+
+\subsection{Complexity, and the condition it depends on}
+\label{sec:complexity}
+
+Let $n$ be the sequence length, $B = 2\dc$ the number of buckets, $n_r$ the number of rounds and $w$ the window. With chunked bucketing at chunk size $c$, per head and per layer:
+\begin{equation}
+  \underbrace{O\big(n_r\, n\, c\big)}_{\text{in-bucket}} \;+\; \underbrace{O(nB)}_{\text{residue}} \;+\; \underbrace{O(nw)}_{\text{window}} \;+\; \underbrace{O(n\,\dc\,\log n)}_{\text{routing + sort}}.
+\end{equation}
+Taking $c \approx n/B$ and balancing the first two terms gives $B \asymp \sqrt{n_r}\sqrt{n}$ and total cost $O(\sqrt{n_r}\,n^{1.5})$, the same asymptotic regime as Routing Transformer.
+
+That derivation hides a condition, and measuring the implementation brought it out (Section~\ref{sec:s7}). The chunk size cannot be chosen freely: fixed-size chunking approximates bucket-wise attention faithfully only when $c$ is comparable to the mean bucket size $\bar{m} = n/B$, and at $c = \bar{m}/4$ the chunked pattern retains $38\%$ of true in-bucket pairs. So $c \gtrsim n/B$ is a correctness constraint, not a tuning choice, and the in-bucket term is $\Omega(n^2/B)$. The $O(n^{1.5})$ figure therefore holds only when
+\begin{equation}
+  B \;\asymp\; \sqrt{n}, \qquad\text{equivalently}\qquad \dc \;\approx\; \tfrac{1}{2}\sqrt{n},
+\end{equation}
+since Definition~\ref{def:router} ties $B$ to twice the routing width. At fixed $\dc$ the method is quadratic with constant $1/B$. We state this as a property of the method rather than of the implementation, because it follows from the definition of the router and not from any coding choice.
+
+\begin{remark}[The width--context coupling]
+\label{rem:coupling}
+Reaching the claimed operating point at $n = 4096$ needs $\dc = 32$, which is ordinary; at $n = 65{,}536$ it needs $\dc = 128$, a content subspace larger than most whole heads. Multi-round routing is the escape hatch --- $n_r$ independent partitions unioned together behave like a larger effective codebook at cost linear in $n_r$ --- but whether unioning rounds recovers the fidelity a single wide partition would have is an open question we have not measured. This coupling is, in our view, the most consequential limitation of the design as specified.
+\end{remark}
+
+\subsection{What is \emph{not} reduced: KV cache}
+
+We state this explicitly because it is a common overclaim. Routing changes \emph{which} keys a query reads; it does not change how many keys exist. Every token still produces exactly one $(\bk,\bv)$ pair, so the KV cache remains $\Theta(n d_h)$ per head, plus $O(B d_h)$ for the running summaries. PHASOR reduces read bandwidth per decoding step (from $n$ to roughly $n/B + B + w$), which is the quantity that dominates memory-bound decoding, but it does not reduce cache \emph{capacity}. Reducing capacity requires a different axis --- MQA/GQA \citep{shazeer2019fast,ainslie2023gqa}, latent compression \citep{deepseekv2}, or eviction \citep{zhang2023h2o}. These compose with PHASOR and are orthogonal to it.
+
+Similarly, routing \emph{which projection matrix} produces a key (the MoE-in-attention axis of MoA, SwitchHead, MoH) does not by itself reduce the quadratic term at all: each token still emits a key and each query still scores against it. Only the sparsity \emph{pattern} reduces the quadratic term. PHASOR acts on the pattern.
+
+\subsection{Norm preservation}
+
+Since $\bR$ is orthogonal and $\hat\bu$ is unit norm, $\|\bR\hat\bu\| = 1$ and $\max_j s_j \in [1/\sqrt{\dc},\, 1]$, with the lower bound attained at the maximally ambiguous point (equal projection onto all axes) and the upper bound when $\hat\bu$ aligns with a codebook direction. The winning score is therefore a bounded, well-scaled confidence signal, which is convenient for the gate $\sigma(s)$ and removes the need for the router $z$-loss used to control logit magnitude in unconstrained routers \citep{zoph2022stmoe}. We flag this as a \emph{plausible} secondary benefit rather than a demonstrated one.
+
+\subsection{Failure modes we expect}
+\label{sec:limits}
+
+\begin{enumerate}
+\item \textbf{Load collapse survives, and it is entirely the encoder's doing.} Proposition~\ref{prop:collapse} closes the codebook channel only. Implementing the router sharpened this in both directions. If the encoder concentrates content directions, buckets become unbalanced and the $n^2/B$ argument fails. This is the single most likely way the method underperforms.
+
+Section~\ref{sec:s3} measures this and Proposition~\ref{prop:load} explains it: the load is a function of the routing input's anisotropy and is invariant to the router's parameters in the isotropic case. The practical reading is that a balancing term has to act on the encoder, not on $\bR$.
+
+\item \textbf{Rigidity may cost accuracy.} A fixed equiangular partition is less expressive than data-fit centroids. Routing Transformer's $k$-means can allocate resolution where the data is dense; PHASOR cannot, except through $\bR$, which moves the whole frame rigidly. If the data manifold is anisotropic, this is a real disadvantage. A2 measures it.
+\item \textbf{Semantic specialisation may not appear.} The intuition motivating this line of work is that buckets will correspond to linguistically meaningful categories. Evidence from MoE models suggests expert specialisation tends to be syntactic and positional rather than semantic \citep{jiang2024mixtral}, and probing work shows linguistic structure is distributed across layers rather than concentrated \citep{tenney2019bert,clark2019bertlook}. We therefore do \emph{not} rest any efficiency claim on interpretability of buckets; we measure it (A7) as a descriptive question, and a negative result there does not falsify the method.
+\item \textbf{The fixed-hash null.} \citet{roller2021hash} show random fixed hashing is a strong router. If A1 (learned vs.\ random $\bR$) shows no gap, the central claim of this paper is false and should be reported as such.
+\item \textbf{Hardware.} Gather/scatter over sorted buckets has poor arithmetic intensity relative to dense FlashAttention \citep{dao2022flashattention}. Reformer and Routing Transformer both report that theoretical FLOP savings translate imperfectly into wall-clock. NSA \citep{yuan2025nsa} exists precisely because of this. We therefore require wall-clock, not only FLOPs, in every table.
+\end{enumerate}
+

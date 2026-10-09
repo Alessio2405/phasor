@@ -1,0 +1,6 @@
+summary_bias_init,summary_mass,within_P3_band
+0.0,0.6178,False
+-2.0,0.1881,True
+-4.0,0.031,True
+-6.0,0.0043,False
+-8.0,0.0006,False

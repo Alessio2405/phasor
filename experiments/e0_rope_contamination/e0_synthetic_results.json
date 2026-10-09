@@ -1,0 +1,63 @@
+[
+  {
+    "case": "content_only",
+    "mi_position_norm": 0.020811230875529278,
+    "mi_token_norm": 1.0,
+    "effective_buckets": 29.323943860125226,
+    "load_entropy_norm": 0.9748014487087183,
+    "n_clusters": 32
+  },
+  {
+    "case": "position_only",
+    "mi_position_norm": 0.7822057290860498,
+    "mi_token_norm": 0.05436362707168835,
+    "effective_buckets": 25.341033881650695,
+    "load_entropy_norm": 0.9326806961344855,
+    "n_clusters": 32
+  },
+  {
+    "case": "content_then_rope",
+    "context": 256,
+    "mi_position_norm": 0.3793492692457185,
+    "mi_token_norm": 0.9449214666046103,
+    "effective_buckets": 29.455171047647898,
+    "load_entropy_norm": 0.9760898051428618,
+    "n_clusters": 32
+  },
+  {
+    "case": "content_then_rope",
+    "context": 1024,
+    "mi_position_norm": 0.15923789758089205,
+    "mi_token_norm": 0.9403326095509155,
+    "effective_buckets": 29.073158191226636,
+    "load_entropy_norm": 0.9723231787097852,
+    "n_clusters": 32
+  },
+  {
+    "case": "content_then_rope",
+    "context": 4096,
+    "mi_position_norm": 0.1276489412748042,
+    "mi_token_norm": 0.8098404009658577,
+    "effective_buckets": 31.048209850648167,
+    "load_entropy_norm": 0.9912876368273668,
+    "n_clusters": 32
+  },
+  {
+    "case": "content_then_rope",
+    "context": 16384,
+    "mi_position_norm": 0.15670201340088813,
+    "mi_token_norm": 0.49665368008896504,
+    "effective_buckets": 31.193265937264094,
+    "load_entropy_norm": 0.992632541157114,
+    "n_clusters": 32
+  },
+  {
+    "case": "content_no_rope",
+    "context": 4096,
+    "mi_position_norm": 0.020811230875529278,
+    "mi_token_norm": 1.0,
+    "effective_buckets": 29.323943860125226,
+    "load_entropy_norm": 0.9748014487087183,
+    "n_clusters": 32
+  }
+]

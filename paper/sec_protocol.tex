@@ -1,0 +1,132 @@
+\section{Experimental Protocol, Revised}
+\label{sec:protocol}
+
+No language model has been trained. This section specifies the experiments that would settle what Section~\ref{sec:studies} could not, revised in four places where the studies showed the original design was wrong or uninformative. Revisions are marked. All result tables in Section~\ref{sec:placeholders} are placeholders and contain no data.
+
+\subsection{E0: the diagnostic that decides the RoPE contribution}
+\label{sec:e0}
+
+Take a pretrained RoPE model. For each layer, extract key vectors both before and after the rotary embedding is applied, cluster each set on the sphere, and measure what the clusters encode.
+
+\begin{revision}{Revised by S1, S2 and the synthetic run}
+The original specification led with $I(\text{cluster};\text{position})$. Two corrections. First, that quantity is \emph{non-monotone} in context length --- in a synthetic run with all confounds removed it rose to $0.38$ at $n = 256$, fell to $0.13$ at $n = 4096$, and was $0.16$ at $n = 16{,}384$ --- because at short context the phase correlates with position and at long context it scrambles, while the damage grows throughout. The quantity that falls monotonically is $I(\text{cluster};\text{token identity})$, from $1.00$ without RoPE to $0.50$ at $n = 16{,}384$, and it should be the headline. Second, E0 must report \textbf{effective bucket count}, because the failure S2 identifies is a capacity ceiling rather than uniform hashing, and mutual information does not see it.
+
+A third point follows from S2 and is easy to get wrong: the ceiling is a property of \emph{fixed-codebook argmax} routing. Spherical $k$-means fits its centroids to wherever the data went and does not exhibit it --- in the synthetic run the effective cluster count stayed near $29$ of $32$ under RoPE while the argmax router collapsed to five. \textbf{E0 must therefore be run with both clustering rules}, or it will measure the wrong failure.
+\end{revision}
+
+\paragraph{Specification.} Models: Pythia-160m/410m or a comparable open RoPE model; the hook must capture keys on both sides of \texttt{apply\_rotary\_pos\_emb}, and the two tensors must be asserted to differ before any number is trusted. Data: WikiText-103 or FineWeb-Edu. Clustering: spherical $k$-means with $k$-means++ seeding and three restarts, \emph{and} fixed-codebook argmax, at $B \in \{16, 64, 256\}$. Contexts: $512$ to the model's maximum. Report $I(\text{cluster};\text{token})$, $I(\text{cluster};\text{position})$ and effective bucket count, split by RoPE frequency tercile.
+
+\paragraph{Falsification.} If pre- and post-RoPE keys cluster comparably on real data, Proposition~\ref{prop:rope} has no practical force at the scales that matter and the RoPE-decoupling contribution should be withdrawn, not reformulated.
+
+\subsection{Models, data and matching}
+
+Two scales, trained from scratch: \textbf{S} ($\sim$125M non-embedding parameters, 12 layers, $d=768$, 12 heads) and \textbf{M} ($\sim$350M, 24 layers, $d=1024$, 16 heads). Data: FineWeb-Edu \citep{penedo2024fineweb}, with WikiText-103 \citep{merity2017pointer} and PG-19 \citep{rae2020compressive} for long-context evaluation. Token budgets follow compute-optimal ratios \citep{hoffmann2022chinchilla}. Contexts $\{1\text{k}, 4\text{k}, 16\text{k}, 32\text{k}\}$.
+
+\begin{revision}{Added by S7}
+Remark~\ref{rem:coupling} means the routing width cannot be held fixed across the context sweep without changing what is being measured: at $\dc = 32$ the method is at its claimed operating point at $n = 4096$ and is quadratic-with-small-constant at $n = 32{,}768$. Runs must therefore either scale $\dc$ as $\sqrt{n}$, or hold $\dc$ fixed and report that the complexity regime changes across the sweep. Reporting a single speed curve across contexts at fixed $\dc$ would be misleading.
+\end{revision}
+
+Every baseline is matched on total parameters, parameters active per token, training FLOPs and training tokens. Runs that cannot be matched on all four are reported separately and labelled. \textbf{Every table states what it is matched on}; the released harness records this in the run metadata so it cannot be left implicit.
+
+\subsection{Baselines}
+
+\begin{enumerate}
+\item Dense transformer with FlashAttention \citep{dao2022flashattention} and full RoPE.
+\item Dense transformer with partial RoPE at the same $\rho = \dpos/d_h$, which isolates the effect of the split from the effect of routing.
+\item Reformer LSH attention \citep{kitaev2020reformer} at matched bucket count and rounds.
+\item Routing Transformer \citep{roy2021routing} at matched cluster count.
+\item Sliding window with global tokens \citep{beltagy2020longformer} at matched density.
+\item Mixture-of-Depths \citep{raposo2024mixture} at matched capacity --- the baseline for the fallback claim.
+\item NSA \citep{yuan2025nsa} and/or MoBA \citep{lu2025moba} where a faithful reimplementation is feasible; if not, state so rather than omitting silently.
+\end{enumerate}
+
+Baselines 1--6 are reachable in the released implementation by changing one flag, so A1, A3 and A4 are single-variable interventions rather than comparisons between separately written systems that differ in a dozen incidental ways.
+
+\subsection{Metrics}
+
+Validation perplexity; downstream zero-shot accuracy; wall-clock training step time and decode latency on a stated GPU; peak memory; KV read bandwidth per decode step; bucket-load entropy $H(\pi)/\log B$ over training; \textbf{effective bucket count} (added by S2); fraction of attention mass on residue summaries; recall of the sparse pattern against dense attention; and \textbf{in-bucket recall of the chunked kernel} (added by S7), without which a wall-clock number describes a different function from the one the method defines.
+
+\begin{revision}{Added by the toy sweep}
+Report \textbf{loss trajectories, not only final numbers}, and run every arm until the dense baseline has \emph{plateaued} rather than merely started to learn. On the toy task the onset of the learning transition varied by more than a factor of two across seeds of an identical configuration, and a budget truncated near that onset makes every slower arm report at the floor --- which looks like a decisive negative result and is not one. Seeds must be sufficient to resolve onset-time variance, which is a different and larger requirement than resolving steady-state variance.
+\end{revision}
+
+\subsection{Ablations}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}l p{4.9cm} p{6.2cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Ablation} & \textbf{What it tests, and what we now know} \\
+\midrule
+A1 & learned $\bR$ vs.\ random fixed $\bR$ & Does learning the frame beat Reformer-style random hashing? S5 showed the two are indistinguishable at initialisation, so this requires training and cannot be shortcut. If there is no gap, the central claim fails \citep{roller2021hash}. \\
+A2 & orthogonal $\bR$ vs.\ unconstrained linear router & Is the constraint helping (stability, Prop.~\ref{prop:collapse}) or hurting (expressivity)? \\
+A3 & route on content dims vs.\ on RoPE'd dims & The decoupling claim. S1/S2 establish the mechanism; this establishes whether it costs perplexity. Also requires training, by S5. \\
+A4 & residue summaries vs.\ pure skip vs.\ fixed global tokens, $\times$ residue bias $\in \{0,-2,-4,-6\}$ & The fallback claim. Bias sweep added by S6: the branch's share of mass is settable over two orders of magnitude, so the arm is not defined without it. \\
+A5 & $B$, $n_r$, $w$, $\rho$ sweep, \emph{with} chunk size $c$ & Sensitivity. $c$ added by S7: $c/\bar{m}$ is a correctness parameter, not a performance one. \\
+A6$'$ & \emph{replaced:} encoder-side balancing and routing-input whitening, vs.\ router-side $\lambda$ & \textbf{Respecified.} Proposition~\ref{prop:load} shows router-side balancing cannot change the load. The question is whether whitening the routing input restores balance under anisotropic encoder output. \\
+A7 & bucket--POS/entity mutual information & Descriptive only: do buckets align with linguistic categories? A negative result does not falsify the method. \\
+A8 & Cayley vs.\ Householder($p$) & Cost and expressivity of the orthogonal parametrisation. \\
+\bottomrule
+\end{tabular}
+\caption{Ablations, revised. A1 and A3 remain the decisive ones; A6 has been replaced outright.}
+\label{tab:ablations}
+\end{table}
+
+\subsection{Predictions}
+
+We commit in advance, so that what remains is falsifiable. P1 and P3 are restated from their original form in light of the studies.
+
+\begin{enumerate}
+\item[P1$'$.] A3 shows a perplexity gap favouring content-dimension routing that \emph{widens} with context length, and the gap correlates with the effective-bucket-count gap rather than with mutual information against position. (Original P1 predicted a widening gap tracked by $I(\text{cluster};\text{position})$; S1 showed that metric is non-monotone.)
+\item[P2.] A1 shows learned $\bR$ beating random fixed $\bR$ at equal $B$ and $n_r$, with the gap largest at small $B$.
+\item[P3$'$.] A4 shows residue summaries beating a pure skip at equal FLOPs, and in the \emph{converged} model at residue bias $-4$ the attention mass on summaries lies between $2\%$ and $25\%$. (Original P3 omitted both the convergence qualifier and the bias, which S6 showed makes the band settable and the prediction unfalsifiable.)
+\item[P4.] A6$'$ shows whitening the routing input restoring load entropy under anisotropic encoder output, where router-side $\lambda$ does not.
+\item[P5.] Wall-clock gains appear only above a crossover length --- we guess 8k--16k at scale S on current hardware --- and PHASOR is \emph{slower} than dense FlashAttention below it. Any such measurement is reported with in-bucket recall alongside.
+\item[P6.] \emph{New, from S7.} In-bucket recall above $90\%$ requires $c \gtrsim n/B$, and holding $\dc$ fixed while growing $n$ produces a measurable perplexity degradation relative to scaling $\dc \propto \sqrt{n}$ at matched FLOPs.
+\end{enumerate}
+
+\subsection{Placeholder result tables}
+\label{sec:placeholders}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Method} & \textbf{PPL (4k)} & \textbf{PPL (16k)} & \textbf{PPL (32k)} & \textbf{Step (ms)} & \textbf{Decode (ms/tok)} \\
+\midrule
+Dense + FlashAttention      & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+Dense, partial RoPE         & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+Reformer (LSH)              & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+Routing Transformer         & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+Longformer-style            & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+Mixture-of-Depths           & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+NSA / MoBA                  & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+\midrule
+\textbf{PHASOR}             & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Placeholder --- contains no data.} Main comparison at scale S, FLOP- and token-matched, $\dc$ scaled with context per Section~\ref{sec:complexity}.}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+\textbf{ID} & \textbf{Variant} & \textbf{PPL} & \textbf{$H(\pi)/\log B$} & \textbf{eff.\ buckets} & \textbf{top-$k$ recall} \\
+\midrule
+A1 & random fixed $\bR$              & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A1 & learned $\bR$                   & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A2 & unconstrained linear router     & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A3 & routing on RoPE'd dims          & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A3 & routing on content dims         & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A4 & pure skip (MoD-style)           & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A4 & residue summaries, bias $-4$    & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A6$'$ & no whitening                 & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+A6$'$ & routing-input whitening      & \TODO{--} & \TODO{--} & \TODO{--} & \TODO{--} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Placeholder --- contains no data.} Ablations at scale S, 16k context.}
+\end{table}
